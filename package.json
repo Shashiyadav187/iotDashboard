@@ -1,0 +1,19 @@
+{
+  "name": "iotdashboard",
+  "version": "1.0.0",
+  "description": "Gordon's IoT Dashboard",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gordonthree/iotDashboard.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gordonthree/iotDashboard/issues"
+  },
+  "homepage": "https://github.com/gordonthree/iotDashboard#readme"
+}
