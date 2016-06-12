@@ -35,14 +35,35 @@
         "tz": "America/Detroit"
     },
     {
+        "id": "caab8e56.bbe79",
+        "type": "mqtt-broker",
+        "z": "45b15a79.5038c4",
+        "broker": "mypiv1",
+        "port": "1883",
+        "clientid": "",
+        "usetls": false,
+        "verifyservercert": true,
+        "compatmode": true,
+        "keepalive": "60",
+        "cleansession": true,
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": null,
+        "willPayload": "",
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": null,
+        "birthPayload": ""
+    },
+    {
         "id": "e0bd4b08.e2f348",
         "type": "mqtt in",
         "z": "45b15a79.5038c4",
         "name": "mypiv1",
         "topic": "#",
-        "broker": "6eeb58af.6c3af8",
+        "broker": "caab8e56.bbe79",
         "x": 70,
-        "y": 160,
+        "y": 120,
         "wires": [
             [
                 "5cf29eb3.e5794"
@@ -53,8 +74,8 @@
         "id": "5cf29eb3.e5794",
         "type": "function",
         "z": "45b15a79.5038c4",
-        "name": "log topics",
-        "func": "var myMsg = msg.topic.split(\"/\");\nvar d = new Date();\n\nvar epoch = parseInt(d.getTime() / 1000);\n\nvar myTopic = \"INSERT INTO topics (topic,payload) VALUES ('\"+msg.topic+\"','\"+msg.payload+\"') ON DUPLICATE KEY UPDATE lastseen=FROM_UNIXTIME(\"+epoch+\"), payload='\"+msg.payload+\"';\";\n\nmsg.topic = myTopic;\n\t\nreturn msg;",
+        "name": "log nodes",
+        "func": "var topics = msg.topic.split(\"/\");\nvar nodename = topics[1];\nvar msg1 = {topic: \"SELECT 1;\"};\nvar msg2 = {topic: \"SELECT 1;\"};\nvar msg3 = {topic: \"SELECT 1;\"};\n\nmsg1.topic = \"INSERT INTO topics (nodename,topic,payload) \\\n                VALUES (\\'\"+ nodename +\"\\',\\'\"+ msg.topic +\"\\',\\'\"+ msg.payload+\"\\') \\\n                ON DUPLICATE KEY UPDATE \\\n                lastseen=CURRENT_TIMESTAMP, payload=\\'\"+msg.payload+\"\\';\";\n\nif (topics[2]===\"temperature\") {\n    msg2 = {topic: \"INSERT INTO temps (topic,temp) \\\n                    VALUES (\\'\"+ nodename +\"\\',\\'\"+ msg.payload +\"\\');\"};\n\n} \n\nif (topics[2]===\"bat\") {\n    msg3 = {topic: \"INSERT INTO vbat (topic,battery) \\\n                    VALUES (\\'\"+ nodename +\"\\',\\'\"+ msg.payload +\"\\') \\\n                    ON DUPLICATE KEY UPDATE battery=\\'\"+ msg.payload +\"\\';\"};    \n}\n\nreturn [[msg1, msg2, msg3]];\n",
         "outputs": 1,
         "noerr": 0,
         "x": 260,
@@ -73,7 +94,7 @@
         "mydb": "c5cc5a9d.88cd48",
         "name": "",
         "x": 430,
-        "y": 200,
+        "y": 160,
         "wires": [
             []
         ]
@@ -86,53 +107,10 @@
         "topic": "#",
         "broker": "6eeb58af.6c3af8",
         "x": 70,
-        "y": 220,
+        "y": 200,
         "wires": [
             [
                 "5cf29eb3.e5794"
-            ]
-        ]
-    },
-    {
-        "id": "f739d5cd.2bddc8",
-        "type": "function",
-        "z": "45b15a79.5038c4",
-        "name": "log vbat",
-        "func": "var topics = msg.topic.split(\"/\");\nvar myNode = topics[1]; // grab the middle topic element (node name) \n\nvar myTopic = \"INSERT INTO vbat (topic,battery) \\\n                    VALUES (\\'\"+myNode+\"\\',\\'\"+msg.payload+\"\\') \\\n                    ON DUPLICATE KEY UPDATE battery=\\'\"+msg.payload+\"\\';\";\n\nmsg.topic = myTopic;\n\t\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "x": 260,
-        "y": 480,
-        "wires": [
-            [
-                "9c51a148.209fd"
-            ]
-        ]
-    },
-    {
-        "id": "9c51a148.209fd",
-        "type": "mysql",
-        "z": "45b15a79.5038c4",
-        "mydb": "c5cc5a9d.88cd48",
-        "name": "",
-        "x": 430,
-        "y": 480,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "bf7553ce.b778c",
-        "type": "mqtt in",
-        "z": "45b15a79.5038c4",
-        "name": "vbat",
-        "topic": "+/+/bat",
-        "broker": "6eeb58af.6c3af8",
-        "x": 70,
-        "y": 480,
-        "wires": [
-            [
-                "f739d5cd.2bddc8"
             ]
         ]
     },
@@ -143,9 +121,9 @@
         "name": "",
         "active": false,
         "console": "false",
-        "complete": "topic",
-        "x": 440,
-        "y": 160,
+        "complete": "true",
+        "x": 430,
+        "y": 120,
         "wires": []
     },
     {
@@ -202,7 +180,7 @@
         "type": "function",
         "z": "45b15a79.5038c4",
         "name": "prep email",
-        "func": "var payload = msg.payload;\nvar msg2 = {payload: \"foo\", topic: \"bar\"};\n\nvar subject = \"Low battery alert\";\nvar body = \"Heads up, the following modules have a low battery:<br>&nbsp;<br>\";\nvar sql = \"UPDATE vbat SET notified=CURRENT_TIMESTAMP WHERE topic IN ( \";\n\nfunction batteries(item, index) {\n    if (parseInt(item.battery) < 3.0) {\n        body += \"<font color=\\'red\\'>Node: \" + item.topic + \" vbat: \" + item.battery +\"</font><br>\";    \n    } else {\n        body += \"Node: \" + item.topic + \" vbat: \" + item.battery +\"<br>\";\n    }\n    \n    sql += \"\\'\"+ item.topic +\"\\',\";\n}\n\npayload.forEach(batteries);\n\nsql += \"\\'foo\\' );\" // add junk topic and close query\n\nmsg.payload = body;\nmsg.topic = subject;\nmsg.to = \"gordonthree@gmail.com\";\n\nmsg2.topic = sql;\n\n// if the low battery payload is empty, don't send low battery email\n// or update the battery table\nif (payload.length>0) {\n    return [msg, msg2];\n} else {\n    return [null, null];\n}\n",
+        "func": "var payload = msg.payload;\nvar msg2 = {payload: \"foo\", topic: \"bar\"};\n\nvar subject = \"Low battery alert\";\nvar body = \"Heads up, the following modules have a low battery:<br>&nbsp;<br>\";\nvar sql = \"UPDATE vbat SET notified=CURRENT_TIMESTAMP WHERE topic IN ( \";\n\nfunction batteries(item, index) {\n    if (parseInt(item.battery) < 3.0) {\n        body += \"Node: \" + item.topic + \" <font color=\\'red\\'>vbat: \" + item.battery +\"</font><br>\";    \n    } else {\n        body += \"Node: \" + item.topic + \" vbat: \" + item.battery +\"<br>\";\n    }\n    \n    sql += \"\\'\"+ item.topic +\"\\',\";\n}\n\npayload.forEach(batteries);\n\nsql += \"\\'foo\\' );\" // add junk topic and close query\n\nmsg.payload = body;\nmsg.topic = subject;\nmsg.to = \"gordonthree@gmail.com\";\n\nmsg2.topic = sql;\n\n// if the low battery payload is empty, don't send low battery email\n// or update the battery table\nif (payload.length>0) {\n    return [msg, msg2];\n} else {\n    return [null, null];\n}\n",
         "outputs": "2",
         "noerr": 0,
         "x": 610,
