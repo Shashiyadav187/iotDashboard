@@ -282,7 +282,7 @@
   },
   "node-red-node-email": {
    "name": "node-red-node-email",
-   "version": "0.1.3",
+   "version": "0.1.7",
    "nodes": {
     "email": {
      "name": "email",
@@ -340,6 +340,22 @@
      "enabled": true,
      "module": "node-red-node-twitter",
      "file": "/usr/local/lib/node_modules/node-red/node_modules/node-red-node-twitter/27-twitter.js"
+    }
+   }
+  },
+  "node-red-node-mysql": {
+   "name": "node-red-node-mysql",
+   "version": "0.0.8",
+   "nodes": {
+    "mysql": {
+     "name": "mysql",
+     "types": [
+      "MySQLdatabase",
+      "mysql"
+     ],
+     "enabled": true,
+     "module": "node-red-node-mysql",
+     "file": "/usr/local/lib/node_modules/node-red-node-mysql/68-mysql.js"
     }
    }
   }
