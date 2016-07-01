@@ -2,7 +2,26 @@
     {
         "type": "tab",
         "id": "45b15a79.5038c4",
-        "label": "Flow 1"
+        "label": "Flow 1",
+        "_def": {
+            "defaults": {
+                "label": {
+                    "value": ""
+                }
+            }
+        }
+    },
+    {
+        "type": "tab",
+        "id": "c7a8b8be.212228",
+        "label": "Flow 2",
+        "_def": {
+            "defaults": {
+                "label": {
+                    "value": ""
+                }
+            }
+        }
     },
     {
         "id": "6eeb58af.6c3af8",
@@ -56,26 +75,43 @@
         "birthPayload": ""
     },
     {
-        "id": "e0bd4b08.e2f348",
-        "type": "mqtt in",
-        "z": "45b15a79.5038c4",
-        "name": "mypiv1",
-        "topic": "#",
-        "broker": "caab8e56.bbe79",
-        "x": 70,
-        "y": 120,
-        "wires": [
-            [
-                "5cf29eb3.e5794"
-            ]
-        ]
+        "id": "8a9c47a.3fbedb8",
+        "type": "websocket-listener",
+        "z": "c7a8b8be.212228",
+        "path": "/ws/simple",
+        "wholemsg": "false"
+    },
+    {
+        "id": "539b0b8f.690e84",
+        "type": "MySQLdatabase",
+        "z": "c7a8b8be.212228",
+        "host": "127.0.0.1",
+        "port": "3306",
+        "db": "iot",
+        "tz": "america/new_york"
+    },
+    {
+        "id": "bc18075b.bfef98",
+        "type": "MySQLdatabase",
+        "z": "c7a8b8be.212228",
+        "host": "127.0.0.1",
+        "port": "3306",
+        "db": "pidb",
+        "tz": "america/new_york"
+    },
+    {
+        "id": "c413712d.abadc",
+        "type": "websocket-listener",
+        "z": "c7a8b8be.212228",
+        "path": "/ws/nodelist",
+        "wholemsg": "false"
     },
     {
         "id": "5cf29eb3.e5794",
         "type": "function",
         "z": "45b15a79.5038c4",
         "name": "log nodes",
-        "func": "var topics = msg.topic.split(\"/\");\nvar nodename = topics[1];\nvar msg1 = {topic: \"SELECT 1;\"};\nvar msg2 = {topic: \"SELECT 1;\"};\nvar msg3 = {topic: \"SELECT 1;\"};\n\nmsg1.topic = \"INSERT INTO topics (nodename,topic,payload) \\\n                VALUES (\\'\"+ nodename +\"\\',\\'\"+ msg.topic +\"\\',\\'\"+ msg.payload+\"\\') \\\n                ON DUPLICATE KEY UPDATE \\\n                lastseen=CURRENT_TIMESTAMP, payload=\\'\"+msg.payload+\"\\';\";\n\nif (topics[2]===\"temperature\") {\n    msg2 = {topic: \"INSERT INTO temps (topic,temp) \\\n                    VALUES (\\'\"+ nodename +\"\\',\\'\"+ msg.payload +\"\\');\"};\n\n} \n\nif (topics[2]===\"bat\") {\n    msg3 = {topic: \"INSERT INTO vbat (topic,battery) \\\n                    VALUES (\\'\"+ nodename +\"\\',\\'\"+ msg.payload +\"\\') \\\n                    ON DUPLICATE KEY UPDATE battery=\\'\"+ msg.payload +\"\\';\"};    \n}\n\nreturn [[msg1, msg2, msg3]];\n",
+        "func": "var topics = msg.topic.split(\"/\");\nvar nodename = topics[1];\n\nvar msg1 = {topic: \"SELECT 1;\"};\nvar msg2 = {topic: \"SELECT 1;\"};\nvar msg3 = {topic: \"SELECT 1;\"};\n\nif (topics[2]!=\"cmd\") { // don't log commands\n    msg1.topic = \"INSERT INTO nodes (nodename,topic,payload,lastseen) \\\n                    VALUES (\\'\"+ nodename +\"\\',\\'\"+ msg.topic +\"\\',\\'\"+ msg.payload+\"\\',CURRENT_TIMESTAMP) \\\n                    ON DUPLICATE KEY UPDATE \\\n                    topic=\\'\"+ msg.topic +\"\\',  \\\n                    payload=\\'\"+ msg.payload +\"\\', \\\n                    lastseen=CURRENT_TIMESTAMP;\";\n}\n\nif ((topics[2]===\"temperature\") || (topics[2]===\"temp\")) { // log temps\n    var tmp = msg.payload;\n    msg2.topic = \"INSERT INTO temps (topic,temp) \\\n                    VALUES (\\'\"+ nodename +\"\\',\\'\"+ tmp +\"\\');\";\n                    \n    msg3.topic = \"INSERT INTO current_temps (nodename,temperature) \\\n                    VALUES (\\'\"+ nodename +\"\\',\\'\"+ tmp +\"\\') \\\n                    ON DUPLICATE KEY UPDATE temperature=\\'\"+ tmp +\"\\';\";    \n} \n\nif ((topics[2]===\"vcc\") || (topics[2]===\"bat\")) { // log battery voltages\n    msg2.topic = \"INSERT INTO vbat (topic,battery) \\\n                    VALUES (\\'\"+ nodename +\"\\',\\'\"+ msg.payload +\"\\') \\\n                    ON DUPLICATE KEY UPDATE battery=\\'\"+ msg.payload +\"\\';\";    \n\n    msg3.topic = \"INSERT INTO vbat_history (nodename,battery) \\\n                    VALUES (\\'\"+ nodename +\"\\',\\'\"+ msg.payload +\"\\');\";\n}\n\nif (topics[2]===\"rssi\") { // log signal strength\n    msg2.topic = \"INSERT INTO rssi (nodename,rssi) \\\n                    VALUES (\\'\"+ nodename +\"\\',\\'\"+ msg.payload +\"\\') \\\n                    ON DUPLICATE KEY UPDATE \\\n                    rssi=\\'\"+ msg.payload +\"\\';\";\n\n    msg3.topic = \"INSERT INTO rssi_history (nodename,rssi) \\\n                    VALUES (\\'\"+ nodename +\"\\',\\'\"+ msg.payload +\"\\');\";\n} \n\nreturn [[msg1, msg2, msg3]];\n",
         "outputs": 1,
         "noerr": 0,
         "x": 260,
@@ -107,10 +143,11 @@
         "topic": "#",
         "broker": "6eeb58af.6c3af8",
         "x": 70,
-        "y": 200,
+        "y": 160,
         "wires": [
             [
-                "5cf29eb3.e5794"
+                "5cf29eb3.e5794",
+                "727bb52c.ea135c"
             ]
         ]
     },
@@ -150,7 +187,7 @@
         "type": "function",
         "z": "45b15a79.5038c4",
         "name": "check vbat",
-        "func": "var myTopic = \"SELECT topic,battery FROM vbat \\\n                    where battery < \\'3.1\\' and (\\\n                    (current_timestamp > date_add(notified, INTERVAL 12 HOUR)) or \\\n                    (notified like \\'0000-00-00 00:00:00\\') \\\n                    );\";\n\n                    \nmsg.topic = myTopic;\nmsg.payload = \"\";\n\nreturn msg;",
+        "func": "var myTopic = \"SELECT topic,battery FROM vbat \\\n                    where battery <= 2.40 and (\\\n                    (current_timestamp > date_add(notified, INTERVAL 24 HOUR)) or \\\n                    (notified like \\'0000-00-00 00:00:00\\') \\\n                    );\";\n\n                    \nmsg.topic = myTopic;\nmsg.payload = \"\";\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "x": 270,
@@ -217,5 +254,768 @@
         "wires": [
             []
         ]
+    },
+    {
+        "id": "9b9fef38.c19a4",
+        "type": "inject",
+        "z": "c7a8b8be.212228",
+        "name": "Tick every 5 secs",
+        "topic": "test",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "5",
+        "crontab": "",
+        "once": false,
+        "x": 140,
+        "y": 220,
+        "wires": [
+            [
+                "2227a01a.a327c"
+            ]
+        ]
+    },
+    {
+        "id": "f3ead0b8.ab0a2",
+        "type": "websocket out",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "server": "8a9c47a.3fbedb8",
+        "client": "",
+        "x": 840,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "89c505aa.b03a88",
+        "type": "http response",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "x": 527,
+        "y": 159,
+        "wires": []
+    },
+    {
+        "id": "41e0cc58.0979b4",
+        "type": "http in",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "url": "/simple",
+        "method": "get",
+        "swaggerDoc": "",
+        "x": 158,
+        "y": 159,
+        "wires": [
+            [
+                "5c21838e.a1365c",
+                "62ab1433.d6d49c"
+            ]
+        ]
+    },
+    {
+        "id": "5c21838e.a1365c",
+        "type": "template",
+        "z": "c7a8b8be.212228",
+        "name": "Simple Web Page",
+        "field": "payload",
+        "fieldType": "msg",
+        "format": "html",
+        "syntax": "mustache",
+        "template": "<!DOCTYPE HTML>\n<html>\n    <head>\n    <title>Live Display</title>\n    <script type=\"text/javascript\">\n        var ws;\n        var wsUri = \"ws:\";\n        var loc = window.location;\n        console.log(loc);\n        if (loc.protocol === \"https:\") { wsUri = \"wss:\"; }\n        // This needs to point to the web socket in the Node-RED flow\n        // ... in this case it's ws/simple\n        wsUri += \"//\" + loc.host + loc.pathname.replace(\"simple\",\"ws/simple\");\n\n        function wsConnect() {\n            console.log(\"connect\",wsUri);\n            ws = new WebSocket(wsUri);\n            //var line = \"\";    // either uncomment this for a building list of messages\n            ws.onmessage = function(msg) {\n                var line = \"\";  // or uncomment this to overwrite the existing message\n                // parse the incoming message as a JSON object\n                var data = msg.data;\n                //console.log(data);\n                // build the output from the topic and payload parts of the object\n                line += \"<p>\"+data+\"</p>\";\n                // replace the messages div with the new \"line\"\n                document.getElementById('messages').innerHTML = line;\n                //ws.send(JSON.stringify({data:data}));\n            }\n            ws.onopen = function() {\n                // update the status div with the connection status\n                document.getElementById('status').innerHTML = \"connected\";\n                //ws.send(\"Open for data\");\n                console.log(\"connected\");\n            }\n            ws.onclose = function() {\n                // update the status div with the connection status\n                document.getElementById('status').innerHTML = \"not connected\";\n                // in case of lost connection tries to reconnect every 3 secs\n                setTimeout(wsConnect,3000);\n            }\n        }\n        \n        function doit(m) {\n            if (ws) { ws.send(m); }\n        }\n    </script>\n    <style>\n        table {\n            border-collapse: collapse;\n            width: 50%;\n        }\n        th {\n            border-style: solid;\n            border-bottom: 3px solid;\n            border-top: none;\n            border-left:none;\n            border-right:none;\n            text-align: left;\n        }\n        td {\n            border-style: solid;\n            border-bottom: 2px solid #ddd;\n            border-top: none;\n            border-left:none;\n            border-right:none;\n            text-align: left;\n        }\n    </style>\n    </head>\n    <body onload=\"wsConnect();\" onunload=\"ws.disconnect();\">\n        <font face=\"Arial\">\n        <h1>Live Display</h1>\n        <div id=\"messages\"></div>\n        <button type=\"button\" onclick='doit(\"click\");'>Change dataset</button>\n        <hr/>\n        <div id=\"status\">unknown</div>\n        </font>\n    </body>\n</html>\n",
+        "x": 355,
+        "y": 159,
+        "wires": [
+            [
+                "89c505aa.b03a88"
+            ]
+        ]
+    },
+    {
+        "id": "12c6d8de.fbec77",
+        "type": "websocket in",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "server": "8a9c47a.3fbedb8",
+        "client": "",
+        "x": 340,
+        "y": 280,
+        "wires": [
+            [
+                "dc8ec997.feac98"
+            ]
+        ]
+    },
+    {
+        "id": "2227a01a.a327c",
+        "type": "function",
+        "z": "c7a8b8be.212228",
+        "name": "tables readout",
+        "func": "var sql = [];\n\nsql[0] = \"select topic, min(temp) as 'min',round(avg(temp),2) as 'avg', max(temp) as 'max', \\\n            count(topic) as 'samples' from temps group by topic order by count(topic) desc;\";\n\nsql[1] = \"select nodename, min(battery) as 'min',round(avg(battery),2) as 'avg', max(battery) as 'max', \\\n            count(nodename) as 'samples' from vbat_history group by nodename order by count(nodename) desc;\";\n\nsql[2] = \"select DATE_FORMAT(rssi.ts,'%b %d %Y %h:%i %p') as 'ts', \\\n            rssi.nodename, rssi.rssi, vbat.battery, current_temps.temperature \\\n            from rssi, vbat, current_temps \\\n            where rssi.nodename = vbat.topic and \\\n            rssi.nodename = current_temps.nodename \\\n            order by rssi.ts desc;\";\n\nif (flow.get('wsSql')===undefined) flow.set('wsSql',0);\n\n//node.warn(flow.get('wsSql'));\n\nvar wsSql = flow.get('wsSql');\nvar msg1 = {topic: sql[wsSql]};\n\nreturn msg1;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 340,
+        "y": 220,
+        "wires": [
+            [
+                "dab20cc5.4cee5"
+            ]
+        ]
+    },
+    {
+        "id": "dab20cc5.4cee5",
+        "type": "mysql",
+        "z": "c7a8b8be.212228",
+        "mydb": "bc18075b.bfef98",
+        "name": "",
+        "x": 490,
+        "y": 220,
+        "wires": [
+            [
+                "1889bcbd.51da43",
+                "2793e200.6ada9e"
+            ]
+        ]
+    },
+    {
+        "id": "1889bcbd.51da43",
+        "type": "function",
+        "z": "c7a8b8be.212228",
+        "name": "pretty print",
+        "func": "var pretty;\nvar ugly = msg.payload;\nvar output;\n\nmsg.payload = ugly.length;\n\nif (ugly.length>0) {\n    pretty = \"<p>\" +msg.topic+ \"</p><br>\";\n    var tmp = ugly[0];\n    pretty += \"<table><tr>\";\n    for (var key in tmp) {\n        if (tmp.hasOwnProperty(key)) {\n            pretty+= \"<th>\" +key + \"</th>\";\n        }\n    }\n    pretty+=\"</tr>\";\n    \n    for (i=0; i<ugly.length; i++) {\n        tmp = ugly[i];\n        pretty+=\"<tr>\";\n        for (var key in tmp) {\n            if (tmp.hasOwnProperty(key)) {\n                pretty+= \"<td>\" + tmp[key] +\"</td>\";\n            }\n        }\n        pretty+=\"</tr>\";\n    }\n    \n    pretty+=\"</table>\";\n}\n\n\nmsg.payload = pretty;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 650,
+        "y": 220,
+        "wires": [
+            [
+                "f3ead0b8.ab0a2",
+                "2d408d6.1272072"
+            ]
+        ]
+    },
+    {
+        "id": "b6cc0c99.c97df",
+        "type": "inject",
+        "z": "45b15a79.5038c4",
+        "name": "5 sec",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "5",
+        "crontab": "",
+        "once": false,
+        "x": 70,
+        "y": 360,
+        "wires": [
+            [
+                "c4505205.eac4"
+            ]
+        ]
+    },
+    {
+        "id": "c4505205.eac4",
+        "type": "function",
+        "z": "45b15a79.5038c4",
+        "name": "increment",
+        "func": "if (flow.get(\"pwr2hi\")===undefined) {\n    flow.set(\"pwr2hi\", 50);\n}\n\npwr2hi = flow.get(\"pwr2hi\");\n\nif (pwr2hi<100) {\n    pwr2hi++;\n} else {\n    pwr2hi=40;\n}\n\nmsg.payload = \"pwr2hi=\"+ pwr2hi;\nflow.set(\"pwr2hi\", pwr2hi)\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 240,
+        "y": 360,
+        "wires": [
+            [
+                "69eab42e.94291c"
+            ]
+        ]
+    },
+    {
+        "id": "bf365ea5.22a9f",
+        "type": "mqtt out",
+        "z": "45b15a79.5038c4",
+        "name": "",
+        "topic": "selfbon/stim/cmd",
+        "qos": "",
+        "retain": "",
+        "broker": "6eeb58af.6c3af8",
+        "x": 450,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "69eab42e.94291c",
+        "type": "debug",
+        "z": "45b15a79.5038c4",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "false",
+        "x": 430,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "1c29cc34.3c42a4",
+        "type": "inject",
+        "z": "45b15a79.5038c4",
+        "name": "reset",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "x": 70,
+        "y": 320,
+        "wires": [
+            [
+                "303c60c5.27181"
+            ]
+        ]
+    },
+    {
+        "id": "303c60c5.27181",
+        "type": "function",
+        "z": "45b15a79.5038c4",
+        "name": "",
+        "func": "flow.set(\"pwr2hi\", 50);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 230,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "9c25f1ed.78164",
+        "type": "function",
+        "z": "45b15a79.5038c4",
+        "name": "check update",
+        "func": "var topics = msg.topic.split(\"/\");\nvar nodename = topics[1];\nvar msg1 = {topic: \"\", origtopic: \"\" };\n\nif (msg.payload===\"Sleeping in 60 sec\") {\n    msg1.origtopic = msg.topic;\n    msg1.topic = \"SELECT nodename,url FROM \\\n                    node_updates WHERE \\\n                    nodename = \\'\" +nodename+ \"\\' AND \\\n                    hasupdate IS TRUE;\";\n                    \n    return msg1;\n}\n\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 280,
+        "y": 740,
+        "wires": [
+            [
+                "7fd630fe.e1258"
+            ]
+        ]
+    },
+    {
+        "id": "8f24b93b.673878",
+        "type": "mqtt in",
+        "z": "45b15a79.5038c4",
+        "name": "msgs",
+        "topic": "home/+/msg",
+        "broker": "6eeb58af.6c3af8",
+        "x": 70,
+        "y": 740,
+        "wires": [
+            [
+                "9c25f1ed.78164"
+            ]
+        ]
+    },
+    {
+        "id": "bd3e9f69.46455",
+        "type": "inject",
+        "z": "45b15a79.5038c4",
+        "name": "hello",
+        "topic": "home/trailer/msg",
+        "payload": "Sleeping in 60 sec",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "x": 90,
+        "y": 700,
+        "wires": [
+            [
+                "9c25f1ed.78164"
+            ]
+        ]
+    },
+    {
+        "id": "63aaf779.a03ba8",
+        "type": "debug",
+        "z": "45b15a79.5038c4",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "true",
+        "x": 770,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "7fd630fe.e1258",
+        "type": "mysql",
+        "z": "45b15a79.5038c4",
+        "mydb": "c5cc5a9d.88cd48",
+        "name": "",
+        "x": 450,
+        "y": 740,
+        "wires": [
+            [
+                "2d948fd9.7228a",
+                "a4f6d6d4.5557d8"
+            ]
+        ]
+    },
+    {
+        "id": "2d948fd9.7228a",
+        "type": "function",
+        "z": "45b15a79.5038c4",
+        "name": "parse result",
+        "func": "var msg1 = {payload: \"\"};\nvar msg2 = {topic: msg.origtopic, payload: \"\"};\n\nif (msg.payload.length<=0) {\n    // node.warn(\"empty\");\n} else {\n    var topics = msg.origtopic.split(\"/\");\n    var nodename = topics[1];\n    var cmdtopic = topics[0]+ \"/\" + topics[1] +\"/cmd\";\n    \n    var url = msg.payload[0].url;\n    msg1.topic=\"UPDATE node_updates SET hasupdate=FALSE, updated=TRUE \\\n                    WHERE nodename like \\'\"+ nodename +\"\\';\";\n    msg2.payload=\"update=\"+ url;\n    msg2.topic=cmdtopic;\n    return [msg1, msg2];\n}\n\nreturn [null, null];",
+        "outputs": "2",
+        "noerr": 0,
+        "x": 610,
+        "y": 740,
+        "wires": [
+            [
+                "db22931f.f205c",
+                "2a5ad349.c677fc"
+            ],
+            [
+                "29639c62.1e0844",
+                "63aaf779.a03ba8"
+            ]
+        ]
+    },
+    {
+        "id": "a4f6d6d4.5557d8",
+        "type": "debug",
+        "z": "45b15a79.5038c4",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "true",
+        "x": 590,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "29639c62.1e0844",
+        "type": "mqtt out",
+        "z": "45b15a79.5038c4",
+        "name": "",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "broker": "6eeb58af.6c3af8",
+        "x": 770,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "2a5ad349.c677fc",
+        "type": "debug",
+        "z": "45b15a79.5038c4",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "topic",
+        "x": 780,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "62ab1433.d6d49c",
+        "type": "debug",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "true",
+        "x": 310,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "dc8ec997.feac98",
+        "type": "function",
+        "z": "c7a8b8be.212228",
+        "name": "increment sql",
+        "func": "if (flow.get('wsSql')===undefined) flow.set('wsSql',0);\n\nvar wsSql = flow.get('wsSql');\nwsSql++;\n\nif (wsSql>2) wsSql=0;\n\nflow.set('wsSql',wsSql);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 560,
+        "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2d408d6.1272072",
+        "type": "debug",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "true",
+        "x": 810,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "2793e200.6ada9e",
+        "type": "debug",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "payload",
+        "x": 730,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "47de704d.c026c",
+        "type": "http in",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "url": "/iotconfig",
+        "method": "get",
+        "swaggerDoc": "",
+        "x": 150,
+        "y": 420,
+        "wires": [
+            [
+                "e9b2cdf9.73667"
+            ]
+        ]
+    },
+    {
+        "id": "e9b2cdf9.73667",
+        "type": "function",
+        "z": "c7a8b8be.212228",
+        "name": "iot config",
+        "func": "var macAddr = msg.payload.mac;\nvar myMsg = {   mac:macAddr, \n                nodename:\"\", \n                mqttsrv:\"\",\n                fwversion:\"\",\n                ver:\"\"};\n\nif (macAddr===\"5ccf7f126b5c\") {\n    myMsg.nodename = \"remote01\";\n    myMsg.mqttsrv = \"mypi3\";\n    myMsg.fwversion = \"1001\";\n    myMsg.ver = 1002;\n}\n\nmsg.payload = JSON.stringify(myMsg);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 340,
+        "y": 420,
+        "wires": [
+            [
+                "63f5cfed.5f4"
+            ]
+        ]
+    },
+    {
+        "id": "63f5cfed.5f4",
+        "type": "http response",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "x": 570,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "1ecde99.71ab616",
+        "type": "mqtt in",
+        "z": "45b15a79.5038c4",
+        "name": "temps",
+        "topic": "home/+/temperature",
+        "broker": "6eeb58af.6c3af8",
+        "x": 70,
+        "y": 960,
+        "wires": [
+            [
+                "7225f658.7b2e78"
+            ]
+        ]
+    },
+    {
+        "id": "7225f658.7b2e78",
+        "type": "function",
+        "z": "45b15a79.5038c4",
+        "name": "check temps",
+        "func": "var topics = msg.topic.split(\"/\");\nvar nodename = topics[1];\nvar temp = msg.payload;\nvar cmdstr =    {   topic: topics[0]+\"/\"+topics[1]+\"/cmd\", \n                    payload: null\n                };\nvar cmd = null;\n\nswitch(nodename) {\n    case \"livingrm\":\n        if (temp<18) cmd = \"a\";\n        else if (temp>21) cmd = \"A\";\n        break;\n        \n    case \"bedroom\":\n        if (temp<18) cmd = \"a\";\n        else if (temp>21) cmd = \"A\";\n        break;\n\n    case \"upwest\":\n        if (temp<22) cmd = \"a\";\n        else if (temp>26) cmd = \"A\";\n        break;\n    \n    case \"upnorth\":\n        if (temp<22) cmd = \"a\";\n        else if (temp>26) cmd = \"A\";\n        break;\n}\n\ncmdstr.payload = cmd;\n\nif (cmd!==null) return cmdstr;\nelse return null;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 270,
+        "y": 960,
+        "wires": [
+            [
+                "86a85e86.c7359"
+            ]
+        ]
+    },
+    {
+        "id": "be33dc96.58b1",
+        "type": "debug",
+        "z": "45b15a79.5038c4",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "true",
+        "x": 450,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "86a85e86.c7359",
+        "type": "mqtt out",
+        "z": "45b15a79.5038c4",
+        "name": "",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "broker": "6eeb58af.6c3af8",
+        "x": 450,
+        "y": 960,
+        "wires": []
+    },
+    {
+        "id": "727bb52c.ea135c",
+        "type": "debug",
+        "z": "45b15a79.5038c4",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "true",
+        "x": 250,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "527f7b0a.4fca34",
+        "type": "mqtt in",
+        "z": "45b15a79.5038c4",
+        "name": "mypi3",
+        "topic": "home/+/msg",
+        "qos": "0",
+        "broker": "6eeb58af.6c3af8",
+        "x": 70,
+        "y": 40,
+        "wires": [
+            [
+                "2fdd20a2.8ed9c"
+            ]
+        ]
+    },
+    {
+        "id": "2fdd20a2.8ed9c",
+        "type": "function",
+        "z": "45b15a79.5038c4",
+        "name": "new format",
+        "func": "var topics = msg.topic.split(\"/\");\nvar nodename = topics[1];\nvar data = [];\nif (msg.payload.indexOf(\"=\")) {\n    data = msg.payload.split(\"=\");\n    msg.payload = data[1];\n    msg.topic = topics[0]+'/'+topics[1]+'/'+data[0];\n} else msg.payload = null;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 170,
+        "y": 100,
+        "wires": [
+            [
+                "5cf29eb3.e5794"
+            ]
+        ]
+    },
+    {
+        "id": "8f48b8f8.06af88",
+        "type": "mqtt in",
+        "z": "45b15a79.5038c4",
+        "name": "mypi3",
+        "topic": "home/+/msg",
+        "qos": "0",
+        "broker": "6eeb58af.6c3af8",
+        "x": 70,
+        "y": 840,
+        "wires": [
+            [
+                "ea0fece6.dfbee"
+            ]
+        ]
+    },
+    {
+        "id": "ea0fece6.dfbee",
+        "type": "function",
+        "z": "45b15a79.5038c4",
+        "name": "new format",
+        "func": "var topics = msg.topic.split(\"/\");\nvar nodename = topics[1];\nvar data = [];\nif (msg.payload.indexOf(\"=\")) {\n    data = msg.payload.split(\"=\");\n    msg.payload = data[1];\n    msg.topic = topics[0]+'/'+topics[1]+'/'+data[0];\n} else msg.payload = null;\n\nif (data[0]===\"temp\") return msg;\nelse return null;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 170,
+        "y": 900,
+        "wires": [
+            [
+                "be33dc96.58b1",
+                "7225f658.7b2e78"
+            ]
+        ]
+    },
+    {
+        "id": "134355b9.55b49a",
+        "type": "http response",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "x": 530,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "c8cd5d40.eab68",
+        "type": "http in",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "url": "/nodelist",
+        "method": "get",
+        "swaggerDoc": "",
+        "x": 161,
+        "y": 580,
+        "wires": [
+            [
+                "db735fc3.97ae",
+                "90f0ffb.7fb8c"
+            ]
+        ]
+    },
+    {
+        "id": "db735fc3.97ae",
+        "type": "template",
+        "z": "c7a8b8be.212228",
+        "name": "Simple Web Page",
+        "field": "payload",
+        "fieldType": "msg",
+        "format": "html",
+        "syntax": "mustache",
+        "template": "<!DOCTYPE HTML>\n<html>\n    <head>\n    <title>Live Display</title>\n    <script type=\"text/javascript\">\n        var ws;\n        var wsUri = \"ws:\";\n        var loc = window.location;\n        console.log(loc);\n        if (loc.protocol === \"https:\") { wsUri = \"wss:\"; }\n        // This needs to point to the web socket in the Node-RED flow\n        // ... in this case it's ws/simple\n        wsUri += \"//\" + loc.host + loc.pathname.replace(\"nodelist\",\"ws/nodelist\");\n\n        function wsConnect() {\n            console.log(\"connect\",wsUri);\n            ws = new WebSocket(wsUri);\n            //var line = \"\";    // either uncomment this for a building list of messages\n            ws.onmessage = function(msg) {\n                var line = \"\";  // or uncomment this to overwrite the existing message\n                // parse the incoming message as a JSON object\n                var data = msg.data;\n                //console.log(data);\n                // build the output from the topic and payload parts of the object\n                line += \"<p>\"+data+\"</p>\";\n                // replace the messages div with the new \"line\"\n                document.getElementById('messages').innerHTML = line;\n                //ws.send(JSON.stringify({data:data}));\n            }\n            ws.onopen = function() {\n                // update the status div with the connection status\n                document.getElementById('status').innerHTML = \"connected\";\n                //ws.send(\"Open for data\");\n                console.log(\"connected\");\n            }\n            ws.onclose = function() {\n                // update the status div with the connection status\n                document.getElementById('status').innerHTML = \"not connected\";\n                // in case of lost connection tries to reconnect every 3 secs\n                setTimeout(wsConnect,3000);\n            }\n        }\n        \n        function doit(m) {\n            if (ws) { ws.send(m); }\n        }\n    </script>\n    <style>\n        table {\n            border-collapse: collapse;\n            width: 70%;\n        }\n        th {\n            border-style: solid;\n            border-bottom: 3px solid;\n            border-top: none;\n            border-left:none;\n            border-right:none;\n            text-align: left;\n        }\n        td {\n            border-style: solid;\n            border-bottom: 2px solid #ddd;\n            border-top: none;\n            border-left:none;\n            border-right:none;\n            text-align: left;\n        }\n    </style>\n    </head>\n    <body onload=\"wsConnect();\" onunload=\"ws.disconnect();\">\n        <font face=\"Arial\">\n        <h1>Live Display</h1>\n        <div id=\"messages\"></div>\n        <button type=\"button\" onclick='doit(\"click\");'>Change dataset</button>\n        <hr/>\n        <div id=\"status\">unknown</div>\n        </font>\n    </body>\n</html>\n",
+        "x": 358,
+        "y": 580,
+        "wires": [
+            [
+                "134355b9.55b49a"
+            ]
+        ]
+    },
+    {
+        "id": "90f0ffb.7fb8c",
+        "type": "debug",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "true",
+        "x": 313,
+        "y": 521,
+        "wires": []
+    },
+    {
+        "id": "f48ac4e.f6c9938",
+        "type": "inject",
+        "z": "c7a8b8be.212228",
+        "name": "Tick every 5 secs",
+        "topic": "test",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "5",
+        "crontab": "",
+        "once": false,
+        "x": 130,
+        "y": 660,
+        "wires": [
+            [
+                "5c7950e8.9b0c8"
+            ]
+        ]
+    },
+    {
+        "id": "6379831d.dd533c",
+        "type": "websocket out",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "server": "c413712d.abadc",
+        "client": "",
+        "x": 830,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "467bd592.c2b85c",
+        "type": "websocket in",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "server": "c413712d.abadc",
+        "client": "",
+        "x": 330,
+        "y": 720,
+        "wires": [
+            [
+                "c1466e58.504d1"
+            ]
+        ]
+    },
+    {
+        "id": "5c7950e8.9b0c8",
+        "type": "function",
+        "z": "c7a8b8be.212228",
+        "name": "nodelist readout",
+        "func": "var sql = [];\n\nsql[0] = \"select DATE_FORMAT(lastseen,'%b %d %Y %h:%i %p') as 'lastseen',mac,nodename,cfgversion,fwversion,fwpath \\\n            from nodelist \\\n            order by lastseen desc;\";\n\nsql[1] = sql[0];\n\nsql[2] = sql[0];\n\nif (flow.get('wsSql1')===undefined) flow.set('wsSql1',0);\n\n//node.warn(flow.get('wsSql1'));\n\nvar wsSql = flow.get('wsSql1');\nvar msg1 = {topic: sql[wsSql]};\n\nreturn msg1;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 330,
+        "y": 660,
+        "wires": [
+            [
+                "708299d2.c368f8"
+            ]
+        ]
+    },
+    {
+        "id": "708299d2.c368f8",
+        "type": "mysql",
+        "z": "c7a8b8be.212228",
+        "mydb": "539b0b8f.690e84",
+        "name": "",
+        "x": 480,
+        "y": 660,
+        "wires": [
+            [
+                "ab8b0f18.6557e"
+            ]
+        ]
+    },
+    {
+        "id": "ab8b0f18.6557e",
+        "type": "function",
+        "z": "c7a8b8be.212228",
+        "name": "pretty print",
+        "func": "var pretty;\nvar ugly = msg.payload;\nvar output;\n\nmsg.payload = ugly.length;\n\nif (ugly.length>0) {\n    pretty = \"<p>\" +msg.topic+ \"</p><br>\";\n    var tmp = ugly[0];\n    pretty += \"<table><tr>\";\n    for (var key in tmp) {\n        if (tmp.hasOwnProperty(key)) {\n            pretty+= \"<th>\" +key + \"</th>\";\n        }\n    }\n    pretty+=\"</tr>\";\n    \n    for (i=0; i<ugly.length; i++) {\n        tmp = ugly[i];\n        pretty+=\"<tr>\";\n        for (var key in tmp) {\n            if (tmp.hasOwnProperty(key)) {\n                pretty+= \"<td>\" + tmp[key] +\"</td>\";\n            }\n        }\n        pretty+=\"</tr>\";\n    }\n    \n    pretty+=\"</table>\";\n}\n\n\nmsg.payload = pretty;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 640,
+        "y": 660,
+        "wires": [
+            [
+                "6379831d.dd533c",
+                "c6cf6faa.0fe1c"
+            ]
+        ]
+    },
+    {
+        "id": "c1466e58.504d1",
+        "type": "function",
+        "z": "c7a8b8be.212228",
+        "name": "increment sql",
+        "func": "if (flow.get('wsSql1')===undefined) flow.set('wsSql1',0);\n\nvar wsSql = flow.get('wsSql1');\nwsSql++;\n\nif (wsSql>2) wsSql=0;\n\nflow.set('wsSql1',wsSql);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 550,
+        "y": 720,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c6cf6faa.0fe1c",
+        "type": "debug",
+        "z": "c7a8b8be.212228",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "true",
+        "x": 800,
+        "y": 720,
+        "wires": []
     }
 ]

@@ -2,7 +2,7 @@
  "nodes": {
   "node-red": {
    "name": "node-red",
-   "version": "0.13.4",
+   "version": "0.14.3",
    "nodes": {
     "sentiment": {
      "name": "sentiment",
@@ -48,6 +48,16 @@
      "enabled": true,
      "module": "node-red",
      "file": "/usr/local/lib/node_modules/node-red/nodes/core/core/58-debug.js"
+    },
+    "link": {
+     "name": "link",
+     "types": [
+      "link in",
+      "link out"
+     ],
+     "enabled": true,
+     "module": "node-red",
+     "file": "/usr/local/lib/node_modules/node-red/nodes/core/core/60-link.js"
     },
     "exec": {
      "name": "exec",
@@ -123,6 +133,15 @@
      "enabled": true,
      "module": "node-red",
      "file": "/usr/local/lib/node_modules/node-red/nodes/core/hardware/36-rpi-gpio.js"
+    },
+    "tls": {
+     "name": "tls",
+     "types": [
+      "tls-config"
+     ],
+     "enabled": true,
+     "module": "node-red",
+     "file": "/usr/local/lib/node_modules/node-red/nodes/core/io/05-tls.js"
     },
     "mqtt": {
      "name": "mqtt",
@@ -223,6 +242,16 @@
      "module": "node-red",
      "file": "/usr/local/lib/node_modules/node-red/nodes/core/logic/16-range.js"
     },
+    "split": {
+     "name": "split",
+     "types": [
+      "split",
+      "join"
+     ],
+     "enabled": true,
+     "module": "node-red",
+     "file": "/usr/local/lib/node_modules/node-red/nodes/core/logic/17-split.js"
+    },
     "CSV": {
      "name": "CSV",
      "types": [
@@ -282,7 +311,7 @@
   },
   "node-red-node-email": {
    "name": "node-red-node-email",
-   "version": "0.1.7",
+   "version": "0.1.9",
    "nodes": {
     "email": {
      "name": "email",
